@@ -11,9 +11,25 @@ class WeatherApi {
       '?latitude=$lat&longitude=$lon&current_weather=true&timezone=auto',
     );
     final r = await http.get(uri);
+    print(r.body);
+    print(r.statusCode);
     if (r.statusCode != 200) {
       throw Exception('Weather request failed: ${r.statusCode}');
     }
     return WeatherNow.fromJson(jsonDecode(r.body));
+  }
+
+  Future<List<City>> searchCity(String name) async {
+    final uri = Uri.parse(
+      'https://geocoding-api.open-meteo.com/v1/search'
+      '?name=${Uri.encodeComponent(name)}&count=5&language=en&format=json',
+    );
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw Exception('Geocoding failed: ${r.statusCode}');
+    }
+    final j = jsonDecode(r.body);
+    final list = (j['results'] as List?) ?? [];
+    return list.map((e) => City.fromJson(e)).toList();
   }
 }
