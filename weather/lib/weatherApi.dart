@@ -11,8 +11,6 @@ class WeatherApi {
       '?latitude=$lat&longitude=$lon&current_weather=true&timezone=auto',
     );
     final r = await http.get(uri);
-    print(r.body);
-    print(r.statusCode);
     if (r.statusCode != 200) {
       throw Exception('Weather request failed: ${r.statusCode}');
     }
