@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../weatherApi.dart';
 import '../weather.dart';
+import 'user_repo.dart';
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -46,7 +47,7 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
-    loadWeather();
+    _restoreLastCityAndLoad();
   }
 
   @override
@@ -55,26 +56,62 @@ class _HomepageState extends State<Homepage> {
     super.dispose();
   }
 
-  Future<void> loadWeather() async
-  {
-    //开始前loading == true, err == null
+  // 启动时，优先恢复上次城市，没有就默认 Montreal
+  Future<void> _restoreLastCityAndLoad() async {
+    try {
+      final last = await UserRepo().loadLastCity();
+      if (!mounted) return;
+
+      if (last != null && last['lat'] != null && last['lon'] != null) {
+        await loadWeatherByLatLon(
+          (last['lat'] as num).toDouble(),
+          (last['lon'] as num).toDouble(),
+        );
+      } else {
+        await loadWeatherByLatLon(45.5017, -73.5673); // Montreal
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => err = e.toString());
+      await loadWeatherByLatLon(45.5017, -73.5673);
+    }
+  }
+
+  Future<void> loadWeatherByLatLon(double lat, double lon) async {
     setState(() {
       loading = true;
       err = null;
     });
 
     try {
-      final w = await api.fetchNow(45.5017, -73.5673); // Montreal
+      final w = await api.fetchNow(lat, lon);
+      if (!mounted) return;
       setState(() {
         now = w;
         sky = mapCode(w.code);
       });
-
-    }catch (e)
-    {
+    } catch (e) {
+      if (!mounted) return;
       setState(() => err = e.toString());
     } finally {
-    setState(() => loading = false);
+      if (!mounted) return;
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> loadWeather() async {
+    try {
+      final last = await UserRepo().loadLastCity();
+      if (last != null && last['lat'] != null && last['lon'] != null) {
+        await loadWeatherByLatLon(
+          (last['lat'] as num).toDouble(),
+          (last['lon'] as num).toDouble(),
+        );
+      } else {
+        await loadWeatherByLatLon(45.5017, -73.5673);
+      }
+    } catch (e) {
+      setState(() => err = e.toString());
     }
   }
 
@@ -109,6 +146,14 @@ class _HomepageState extends State<Homepage> {
       );
 
       if (picked == null) return;
+
+      await UserRepo().saveLastCity(
+        name: picked.name,
+        country: picked.country,
+        lat: picked.lat,
+        lon: picked.lon,
+      );
+
 
       final w = await api.fetchNow(picked.lat, picked.lon);
       setState(() {
