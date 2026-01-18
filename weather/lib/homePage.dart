@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../weatherApi.dart';
 import '../weather.dart';
 import 'user_repo.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
+final fln = FlutterLocalNotificationsPlugin();
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
@@ -47,8 +50,40 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
+
+    // 1) 前台收到
+    FirebaseMessaging.onMessage.listen((m) async {
+      final n = m.notification;
+      if (n == null) return;
+
+      await fln.show(
+        n.hashCode,
+        n.title,
+        n.body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'default_channel',
+            'Default',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    });
+
+    // 2) 点通知打开 app（后台）
+    FirebaseMessaging.onMessageOpenedApp.listen((m) {
+      debugPrint('opened from notif: ${m.data}');
+    });
+
+    // 3) 点通知打开 app（被杀死）
+    FirebaseMessaging.instance.getInitialMessage().then((m) {
+      if (m != null) debugPrint('initial message: ${m.data}');
+    });
+
     _restoreLastCityAndLoad();
   }
+
 
   @override
   void dispose() {

@@ -28,6 +28,21 @@ void main() async
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  //注册一个 后台 / 被杀死时 接收 push 的处理函数。
+  //必须在 runApp() 之前写，否则后台收不到
+  FirebaseMessaging.onBackgroundMessage(_bgHandler); 
+
+  // 本地通知初始，前台收到时用它弹通知
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  await fln.initialize(const InitializationSettings(android: androidInit));
+
+  // 请求通知权限（Android 13+ / iOS）
+  await FirebaseMessaging.instance.requestPermission();
+
+  // 取 token（后端要用它发 push）
+  final token = await FirebaseMessaging.instance.getToken();
+  debugPrint('FCM token: $token');
   runApp(const MyApp());
 }
 
